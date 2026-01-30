@@ -1,0 +1,122 @@
+name: "Repo Settings Enforcer"
+description: "Enforces repository settings, security features, and branch protection across the organization"
+
+on:
+  workflow_dispatch:
+    inputs:
+      target-repo:
+        description: "Specific repository to enforce (e.g., atnplex/repo). Leave empty for ALL."
+        required: false
+        type: string
+  schedule:
+    - cron: "0 2 * * *" # Daily at 2 AM
+
+jobs:
+  enforce-settings:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Actions Repo (for baseline)
+        uses: actions/checkout@v4
+        with:
+          repository: atnplex/actions
+          ref: v1
+
+      - name: Enforce Settings
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.ADMIN_TOKEN }} # Requires admin:org, repo, workflow
+          TARGET_REPO: ${{ inputs.target-repo }}
+          ORG_NAME: "atnplex"
+        run: |
+          BASELINE_FILE=".github/repo-settings-baseline.json"
+          if [ ! -f "$BASELINE_FILE" ]; then
+            echo "::error::Baseline file not found at $BASELINE_FILE"
+            exit 1
+          fi
+
+          # Define list of repos to process
+          if [ -n "$TARGET_REPO" ]; then
+            echo "$TARGET_REPO" > repos.txt
+          else
+            echo "Fetching all repos for $ORG_NAME..."
+            gh repo list "$ORG_NAME" --no-archived --source --json nameOrOwner --jq '.[].nameOrOwner' > repos.txt
+          fi
+
+          # Function to apply settings
+          apply_settings() {
+            local REPO=$1
+            echo "::group::Processing $REPO"
+            
+            # 1. Repository Settings (Features, Merge types)
+            # We map JSON keys to gh api parameters or fields
+            # Note: Some fields require separate endpoints or PATCH /repos/:owner/:repo
+            
+            echo "Applying General Settings..."
+            # Extract values using jq
+            HAS_ISSUES=$(jq -r '.repository.has_issues' $BASELINE_FILE)
+            HAS_PROJECTS=$(jq -r '.repository.has_projects' $BASELINE_FILE)
+            HAS_WIKI=$(jq -r '.repository.has_wiki' $BASELINE_FILE)
+            ALLOW_SQUASH=$(jq -r '.repository.allow_squash_merge' $BASELINE_FILE)
+            ALLOW_MERGE=$(jq -r '.repository.allow_merge_commit' $BASELINE_FILE)
+            ALLOW_REBASE=$(jq -r '.repository.allow_rebase_merge' $BASELINE_FILE)
+            ALLOW_AUTO_MERGE=$(jq -r '.repository.allow_auto_merge' $BASELINE_FILE)
+            DELETE_BRANCH=$(jq -r '.repository.delete_branch_on_merge' $BASELINE_FILE)
+            WEB_SIGNOFF=$(jq -r '.repository.web_commit_signoff_required' $BASELINE_FILE)
+            
+            gh api --method PATCH "repos/$REPO" \
+              -f has_issues="$HAS_ISSUES" \
+              -f has_projects="$HAS_PROJECTS" \
+              -f has_wiki="$HAS_WIKI" \
+              -f allow_squash_merge="$ALLOW_SQUASH" \
+              -f allow_merge_commit="$ALLOW_MERGE" \
+              -f allow_rebase_merge="$ALLOW_REBASE" \
+              -f allow_auto_merge="$ALLOW_AUTO_MERGE" \
+              -f delete_branch_on_merge="$DELETE_BRANCH" \
+              -f web_commit_signoff_required="$WEB_SIGNOFF" || echo "::error::Failed to update general settings for $REPO"
+
+            # 2. Security Settings (Enablement)
+            echo "Enabling Security Features..."
+            # Vulnerability Alerts (Dependabot)
+            gh api --method PUT "repos/$REPO/vulnerability-alerts" || echo "Failed to enable vulnerability alerts"
+            # Automated Security Fixes
+            gh api --method PUT "repos/$REPO/automated-security-fixes" || echo "Failed to enable automated security fixes"
+            
+            # 3. Actions Permissions
+            # This requires a specific endpoint: PUT /repos/{owner}/{repo}/actions/permissions
+            echo "Configuring Actions Permissions..."
+            gh api --method PUT "repos/$REPO/actions/permissions" \
+              -f enabled=true \
+              -f allowed_actions="selected" || echo "Failed to set actions permissions"
+            
+            # Set allowed actions (Allow Setup, Checkout, and Own Org)
+            gh api --method PUT "repos/$REPO/actions/permissions/selected-actions" \
+              -f github_owned_allowed=true \
+              -f verified_allowed=true \
+              -f patterns_allowed="atnplex/*,actions/checkout@*,actions/setup-*" || echo "Failed to set allowed actions"
+
+            # 4. Branch Protection (Main)
+            echo "Applying Branch Protection..."
+            # We construct the payload from baseline
+            # Note: 'checks' array in JSON needs to be mapped to the contexts array in API
+            
+            # Use jq to build the specific payload for the API
+            # This is complex in bash, so we rely on the implementation in branch-protection-enforcer logic
+            # OR we just push the whole JSON object if it matches strict API schema.
+            # The baseline JSON 'branch_protection' object matches the API structure we need mostly.
+            
+            PROTECTION_PAYLOAD=$(jq '.branch_protection' $BASELINE_FILE)
+            DEFAULT_BRANCH=$(jq -r '.repository.default_branch' $BASELINE_FILE)
+            
+            # Ensure branch exists (or find actual default)
+            ACTUAL_DEFAULT=$(gh repo view "$REPO" --json defaultBranchRef --jq .defaultBranchRef.name)
+            
+            gh api --method PUT "repos/$REPO/branches/$ACTUAL_DEFAULT/protection" \
+               --input <(echo "$PROTECTION_PAYLOAD") || echo "::error::Failed to apply branch protection for $REPO"
+
+            echo "::endgroup::"
+          }
+
+          # Iterate
+          while read REPO; do
+            apply_settings "$REPO"
+          done < repos.txt
