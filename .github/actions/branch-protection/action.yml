@@ -1,0 +1,51 @@
+name: "Apply Branch Protection"
+description: "Applies branch protection rules via API"
+inputs:
+  repository:
+    required: true
+    description: "Target repository"
+  admin-token:
+    required: true
+    description: "Admin token"
+runs:
+  using: "composite"
+  steps:
+    - name: Apply
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.admin-token }}
+        REPO: ${{ inputs.repository }}
+      run: |
+        # Construct JSON Payload according to GitHub API v3
+        # https://docs.github.com/en/rest/branches/branch-protection
+        cat <<EOF > protection.json
+        {
+          "required_status_checks": {
+            "strict": true,
+            "checks": [
+              {"context": "Lint Self"},
+              {"context": "CodeQL"}
+            ]
+          },
+          "enforce_admins": true,
+          "required_pull_request_reviews": {
+            "dismiss_stale_reviews": true,
+            "require_code_owner_reviews": false,
+            "required_approving_review_count": 1,
+            "require_last_push_approval": false
+          },
+          "restrictions": null,
+          "allow_force_pushes": false,
+          "allow_deletions": false,
+          "block_creations": false,
+          "conversation_resolution": true,
+          "lock_branch": false,
+          "allow_fork_syncing": true
+        }
+        EOF
+        
+        DEFAULT_BRANCH=$(gh repo view "$REPO" --json defaultBranchRef --jq .defaultBranchRef.name)
+        echo "Applying to $REPO ($DEFAULT_BRANCH)..."
+        
+        # We use --input - to pass the JSON file content
+        gh api --method PUT "repos/$REPO/branches/$DEFAULT_BRANCH/protection" --input protection.json

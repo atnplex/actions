@@ -1,0 +1,26 @@
+name: "Reusable Auto-Merge"
+description: "Auto-merges PRs from trusted authors if checks pass"
+
+on:
+  workflow_call:
+    inputs:
+      trusted-authors:
+        description: "Comma-separated list of trusted authors"
+        required: false
+        default: "dependabot[bot],renovate[bot]"
+        type: string
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Enable Auto-Merge
+        if: contains(inputs.trusted-authors, github.actor)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr merge --auto --merge "${{ github.event.pull_request.html_url }}"

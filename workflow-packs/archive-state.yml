@@ -1,0 +1,63 @@
+name: "Archive Agent State"
+description: "Archives local agent state (.ai-work) to the central actions repository"
+
+on:
+  workflow_call:
+    inputs:
+      category:
+        description: "Category (feature, fix, etc)"
+        required: true
+        type: string
+    secrets:
+      BOT_TOKEN:
+        required: true
+        description: "Token with write access to atnplex/actions"
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+        with:
+          path: source
+
+      - name: Checkout Archive Repo
+        uses: actions/checkout@v4
+        with:
+          repository: atnplex/actions
+          token: ${{ secrets.BOT_TOKEN }}
+          path: archive-repo
+
+      - name: Perform Archive
+        shell: bash
+        run: |
+          if [ ! -d "source/.ai-work" ]; then
+            echo "No .ai-work found."
+            exit 0
+          fi
+          
+          DATE=$(date +%Y-%m-%d)
+          TS=$(date +%s)
+          SLUG="${{ inputs.category }}-${DATE}-${TS}"
+          REPO_NAME="${{ github.event.repository.name }}"
+          
+          TARGET="archive-repo/archives/${REPO_NAME}/${SLUG}"
+          mkdir -p "$TARGET"
+          cp -r source/.ai-work/* "$TARGET/"
+          
+          # Push
+          cd archive-repo
+          git config user.name "AI Archiver"
+          git config user.email "bot@atnplex.org"
+          git add archives/
+          git commit -m "chore(archive): ${REPO_NAME} ${SLUG}" || echo "Nothing to commit"
+          git push
+
+      - name: Cleanup Source
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          repository: source
+          commit_message: "chore: cleanup .ai-work"
+          file_pattern: ".ai-work"
+          # Typically we'd use 'git rm' here, but auto-commit action needs careful config for deletions

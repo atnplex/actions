@@ -1,0 +1,22 @@
+name: Validate Self
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test Lint Action
+        uses: ./.github/actions/lint
+
+  test-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test Format Action
+        uses: ./.github/actions/format
+        with:
+          apply-fixes: false

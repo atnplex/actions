@@ -1,0 +1,22 @@
+name: "Drift Detection"
+description: "Checks if repository files match the organization standard"
+
+inputs:
+  expected-files:
+    description: "Comma-separated list of files that must exist"
+    default: "LICENSE,README.md,CODEOWNERS"
+    type: string
+
+runs:
+  using: "composite"
+  steps:
+    - name: Check Files
+      shell: bash
+      run: |
+        IFS=',' read -ra FILES <<< "${{ inputs.expected-files }}"
+        for file in "${FILES[@]}"; do
+          if [ ! -f "$file" ]; then
+            echo "::error file=$file::Missing required file: $file"
+            exit 1
+          fi
+        done

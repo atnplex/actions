@@ -1,0 +1,63 @@
+name: "Branch Protection Enforcer"
+description: "Enforces strict branch protection rules on main/master"
+
+on:
+  workflow_call:
+    inputs:
+      repository:
+        description: "Repository to enforce rules on (owner/repo)"
+        required: true
+        type: string
+      admin-token:
+        description: "Personal Access Token with admin:repo scope"
+        required: true
+        type: string
+      mode:
+        description: "Protection mode: 'baseline' (no status checks) or 'strict' (required status checks)"
+        default: "strict"
+        type: string
+
+jobs:
+  enforce:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Actions Repo for Templates
+        uses: actions/checkout@v4
+        with:
+          repository: atnplex/actions
+          ref: chore/init-ssot-actions
+
+      - name: Enforce Protection
+        shell: bash
+        env:
+          GH_TOKEN: ${{ inputs.admin-token }}
+          REPO: ${{ inputs.repository }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          echo "Applying $MODE protection to $REPO..."
+          
+          # Get default branch
+          DEFAULT_BRANCH=$(gh repo view "$REPO" --json defaultBranchRef --jq .defaultBranchRef.name)
+          echo "Default branch: $DEFAULT_BRANCH"
+
+          if [ -z "$DEFAULT_BRANCH" ]; then
+             echo "::error::Could not determine default branch for $REPO"
+             exit 1
+          fi
+
+          if [ "$MODE" == "baseline" ]; then
+            PROTECTION_FILE="templates/protection-baseline.json"
+          else
+            PROTECTION_FILE="templates/protection-strict.json"
+          fi
+
+          if [ ! -f "$PROTECTION_FILE" ]; then
+             echo "::error::Protection file $PROTECTION_FILE not found!"
+             exit 1
+          fi
+
+          # Apply rules
+          gh api --method PUT "repos/$REPO/branches/$DEFAULT_BRANCH/protection" \
+            --input "$PROTECTION_FILE"
+            
+          echo "Protection applied ($MODE)."

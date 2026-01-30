@@ -1,0 +1,18 @@
+name: "AI Review Helper"
+description: "Template for AI-assisted PR reviews"
+
+inputs:
+  model:
+    description: "Model to use"
+    default: "gemini-pro"
+    type: string
+
+runs:
+  using: "composite"
+  steps:
+    - name: AI Review Placeholder
+      shell: bash
+      run: |
+        echo "AI Review Step"
+        echo "To enable actual AI review, configure an API key and call an LLM provider here."
+        echo "Model selected: ${{ inputs.model }}"

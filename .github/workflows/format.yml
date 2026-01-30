@@ -1,0 +1,45 @@
+name: "Reusable Format"
+description: "Checks and fixes formatting (Prettier, Shfmt)"
+
+on:
+  workflow_call:
+    inputs:
+      apply-fixes:
+        description: "Whether to apply and push fixes back to the PR"
+        type: boolean
+        default: false
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Needed for auto-commit
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }} # Important for pushing back changes
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check/Run Prettier
+        shell: bash
+        run: |
+          echo "::group::Prettier"
+          npm install -g prettier
+          if [ "${{ inputs.apply-fixes }}" == "true" ]; then
+            prettier --write "**/*.{js,jsx,ts,tsx,json,css,scss,md,yml,yaml}"
+          else
+            prettier --check "**/*.{js,jsx,ts,tsx,json,css,scss,md,yml,yaml}"
+          fi
+          echo "::endgroup::"
+
+      - name: Commit Fixes
+        if: inputs.apply-fixes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "style: auto-format [skip ci]"
+          branch: ${{ github.head_ref }}

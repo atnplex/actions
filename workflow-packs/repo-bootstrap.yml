@@ -1,0 +1,56 @@
+name: "Repo Bootstrap Aggregator"
+description: "The Single Source of Truth workflow that calls all other standard workflows"
+
+on:
+  workflow_call:
+    inputs:
+      enable-lint:
+        type: boolean
+        default: true
+      enable-security:
+        type: boolean
+        default: true
+      allow-ai-artifacts:
+        type: boolean
+        default: false
+      language:
+        type: string
+        default: "javascript"
+
+jobs:
+  enforce-clean:
+    if: inputs.allow-ai-artifacts == false
+    uses: atnplex/actions/workflow-packs/enforce-clean.yml@chore/init-ssot-actions
+
+  lint:
+    if: inputs.enable-lint
+    uses: atnplex/actions/workflow-packs/lint.yml@chore/init-ssot-actions
+    permissions:
+      contents: read
+
+  format:
+    if: inputs.enable-lint
+    uses: atnplex/actions/workflow-packs/format.yml@chore/init-ssot-actions
+    permissions:
+      contents: write # Needed for auto-format if enabled (but here we check only)
+
+  metadata:
+    uses: atnplex/actions/workflow-packs/metadata.yml@chore/init-ssot-actions
+    permissions:
+      pull-requests: read
+      statuses: write
+
+  security-scan:
+    if: inputs.enable-security
+    uses: atnplex/actions/workflow-packs/secret-scan.yml@chore/init-ssot-actions
+
+  # CodeQL is tricky to abstract fully if we want matrix strategies, but we can offer a standard single-run
+  codeql:
+    if: inputs.enable-security
+    uses: atnplex/actions/workflow-packs/codeql.yml@chore/init-ssot-actions
+    with:
+      language: ${{ inputs.language }}
+    permissions:
+      security-events: write
+      actions: read
+      contents: read

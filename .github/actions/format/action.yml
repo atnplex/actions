@@ -1,0 +1,33 @@
+name: "Format"
+description: "Checks and fixes formatting (Prettier)"
+inputs:
+  apply-fixes:
+    description: "Whether to apply and push fixes back to the PR"
+    required: false
+    default: "false"
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Check/Run Prettier
+      shell: bash
+      run: |
+        echo "::group::Prettier"
+        npm install -g prettier
+        if [ "${{ inputs.apply-fixes }}" == "true" ]; then
+          prettier --write "**/*.{js,jsx,ts,tsx,json,css,scss,md,yml,yaml}"
+        else
+          prettier --check "**/*.{js,jsx,ts,tsx,json,css,scss,md,yml,yaml}"
+        fi
+        echo "::endgroup::"
+
+    - name: Commit Fixes
+      if: inputs.apply-fixes == 'true'
+      uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        commit_message: "style: auto-format [skip ci]"
+        branch: ${{ github.head_ref }}

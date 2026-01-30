@@ -1,0 +1,43 @@
+name: "Repo Onboarding"
+description: "Opens a PR to add bootstrap.yml to a repo"
+
+inputs:
+  repository:
+    description: "Repository to onboard"
+    required: true
+    type: string
+  admin-token:
+    description: "Token to push changes"
+    required: true
+    type: string
+
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout Target
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ inputs.repository }}
+        token: ${{ inputs.admin-token }}
+        path: target-repo
+
+    - name: Add Bootstrap
+      shell: bash
+      run: |
+        mkdir -p target-repo/.github/workflows
+        # Copy from the actions repo (assuming we are running IN the actions repo context or have checked it out)
+        # Since this is a composite action, we don't easily have access to 'templates' unless we check out THIS repo too.
+        # Simpler: Write the content or fetch it.
+        
+        curl -o target-repo/.github/workflows/bootstrap.yml \
+          "https://raw.githubusercontent.com/atnplex/actions/main/templates/bootstrap-workflow.yml"
+          
+    - name: Create PR
+      uses: peter-evans/create-pull-request@v6
+      with:
+        token: ${{ inputs.admin-token }}
+        path: target-repo
+        commit-message: "chore: onboarding governance"
+        title: "chore: Adopt Organization Governance"
+        body: "This PR adds the standard bootstrap workflow."
+        branch: "governance-onboarding"

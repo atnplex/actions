@@ -1,0 +1,41 @@
+name: "Organization Repo Audit"
+description: "Scans organization for repos missing bootstrap or protections"
+
+on:
+  workflow_call:
+    inputs:
+      org-name:
+        description: "Organization name to audit"
+        required: true
+        type: string
+      admin-token:
+        description: "Token with read:org scope"
+        required: true
+        type: string
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Audit Repos
+        shell: bash
+        env:
+          GH_TOKEN: ${{ inputs.admin-token }}
+          ORG: ${{ inputs.org-name }}
+        run: |
+          echo "Auditing $ORG..."
+          
+          # List all repos
+          gh repo list "$ORG" --no-archived --json name,url --limit 100 > repos.json
+          
+          cat repos.json | jq -r '.[].name' | while read -r repo; do
+            FULL_REPO="$ORG/$repo"
+            echo "Checking $FULL_REPO..."
+            
+            if gh api "repos/$FULL_REPO/contents/.github/workflows/bootstrap.yml" --silent; then
+              echo "✅ $FULL_REPO has bootstrap."
+            else
+              echo "❌ $FULL_REPO MISSING bootstrap."
+              echo "::warning title=Missing Bootstrap::$FULL_REPO is missing governance."
+            fi
+          done

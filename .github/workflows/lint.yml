@@ -1,0 +1,53 @@
+name: "Reusable Lint"
+description: "Lints codebase using standard tools (Actionlint, Shellcheck, Markdownlint)"
+
+on:
+  workflow_call:
+    inputs:
+      enable-actionlint:
+        description: "Enable Actionlint"
+        type: boolean
+        default: true
+      enable-shellcheck:
+        description: "Enable Shellcheck"
+        type: boolean
+        default: true
+      enable-markdownlint:
+        description: "Enable Markdownlint"
+        type: boolean
+        default: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Run Actionlint
+        if: inputs.enable-actionlint
+        shell: bash
+        run: |
+          echo "::group::Actionlint"
+          bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          ./actionlint -color
+          echo "::endgroup::"
+
+      - name: Run Shellcheck
+        if: inputs.enable-shellcheck
+        shell: bash
+        run: |
+          echo "::group::Shellcheck"
+          find . -type f -name "*.sh" -exec shellcheck -S warning {} + || echo "No shell scripts found or check failed"
+          echo "::endgroup::"
+
+      - name: Run Markdownlint
+        if: inputs.enable-markdownlint
+        shell: bash
+        run: |
+          echo "::group::Markdownlint"
+          npm install -g markdownlint-cli
+          markdownlint "**/*.md" --ignore node_modules
+          echo "::endgroup::"

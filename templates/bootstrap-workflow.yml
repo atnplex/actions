@@ -1,0 +1,17 @@
+name: "Organization Governance"
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  governance:
+    # Pointing to the feature branch for initial testing. 
+    # Will be updated to @v1 after the actions repo is merged and tagged.
+    uses: atnplex/actions/.github/workflows/repo-bootstrap.yml@chore/init-ssot-actions
+    secrets: inherit
+    with:
+      enable-lint: true
+      enable-security: true
+      language: "javascript" # Default, override as needed

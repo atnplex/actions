@@ -1,0 +1,13 @@
+name: "Enforce Clean"
+description: "Rejects prohibited artifacts"
+runs:
+  using: "composite"
+  steps:
+    - name: Check for .ai-work
+      shell: bash
+      run: |
+        if [ -d ".ai-work" ]; then
+          echo "::error::❌ .ai-work directory found! You must archive artifacts before merging."
+          exit 1
+        fi
+        echo "✅ No .ai-work directory found."
