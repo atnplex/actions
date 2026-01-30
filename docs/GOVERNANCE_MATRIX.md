@@ -43,3 +43,12 @@ This matrix defines the governance goals for the `atnplex` organization and how 
 - **Modes**:
   - `baseline`: Enforce admin reviews, conversation resolution. **No** status checks.
   - `strict`: Adds status checks (`lint`, `security-scan`) _only_ if determining they are available/required.
+
+## Required Token Scopes
+
+For the `ADMIN_TOKEN` used in enforcement workflows:
+
+- `admin:org`: Required to list organization repositories and change organization-level settings.
+- `repo` (or `admin:repo`): Required to change repository settings, branch protection, and merging strategies.
+- `workflow`: Required to dispatch workflows and manage actions permissions.
+- `delete_repo` (Optional): Only if we ever need to delete repos (not currently used).
