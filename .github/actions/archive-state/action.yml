@@ -1,0 +1,39 @@
+name: "Archive State"
+description: "Archives .ai-work directory"
+inputs:
+  slug:
+    required: true
+    description: "Archive slug"
+  bot-token:
+    required: true
+    description: "Token to push to actions repo"
+    # Composite actions can accept secrets as inputs
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout Archive Repo
+      uses: actions/checkout@v4
+      with:
+        repository: atnplex/actions
+        token: ${{ inputs.bot-token }}
+        path: archive-repo
+
+    - name: Perform Archive
+      shell: bash
+      run: |
+        if [ ! -d ".ai-work" ]; then
+          echo "No .ai-work found."
+          exit 0
+        fi
+        
+        REPO_NAME="${{ github.event.repository.name }}"
+        TARGET="archive-repo/archives/${REPO_NAME}/${{ inputs.slug }}"
+        mkdir -p "$TARGET"
+        cp -r .ai-work/* "$TARGET/"
+        
+        cd archive-repo
+        git config user.name "AI Archiver"
+        git config user.email "bot@atnplex.org"
+        git add archives/
+        git commit -m "chore(archive): ${REPO_NAME} ${{ inputs.slug }}" || echo "Nothing to commit"
+        git push

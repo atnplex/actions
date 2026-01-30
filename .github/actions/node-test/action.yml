@@ -1,0 +1,43 @@
+name: "Node Test"
+description: "Generic test runner for Node.js projects"
+inputs:
+  test-type:
+    required: true
+    description: "Test type (unit, integration, e2e)"
+  test-command:
+    required: false
+    default: "npm test"
+    description: "Command to run tests"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: "20"
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        if [ -f package-lock.json ]; then
+          npm ci
+        elif [ -f package.json ]; then
+          npm install
+        fi
+
+    - name: Run tests
+      shell: bash
+      run: ${{ inputs.test-command }}
+      env:
+        NODE_ENV: test
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-${{ inputs.test-type }}
+        path: |
+          coverage/
+          test-results/
+        retention-days: 30

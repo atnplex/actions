@@ -1,0 +1,48 @@
+name: "Repo Onboarding"
+description: "Opens a PR to add bootstrap.yml to a repo"
+
+on:
+  workflow_call:
+    inputs:
+      repository:
+        description: "Repository to onboard"
+        required: true
+        type: string
+      admin-token:
+        description: "Token to push changes"
+        required: true
+        type: string
+
+jobs:
+  onboard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Target
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.repository }}
+          token: ${{ inputs.admin-token }}
+          path: target-repo
+
+      - name: Checkout Actions (for templates)
+        uses: actions/checkout@v4
+        with:
+          repository: atnplex/actions
+          ref: chore/init-ssot-actions
+          path: actions-repo
+
+      - name: Add Bootstrap
+        shell: bash
+        run: |
+          mkdir -p target-repo/.github/workflows
+          cp actions-repo/templates/bootstrap-workflow.yml target-repo/.github/workflows/bootstrap.yml
+          
+      - name: Create PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ inputs.admin-token }}
+          path: target-repo
+          commit-message: "chore: onboarding governance"
+          title: "chore: Adopt Organization Governance"
+          body: "This PR adds the standard bootstrap workflow."
+          branch: "governance-onboarding"

@@ -1,0 +1,21 @@
+name: "Secret Scan"
+description: "Scans for secrets using TruffleHog"
+inputs:
+  base:
+    description: "Base branch"
+    required: false
+    default: "main"
+  head:
+    description: "Head branch"
+    required: false
+    default: "HEAD"
+runs:
+  using: "composite"
+  steps:
+    - name: TruffleHog OSS
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: ${{ inputs.base }}
+        head: ${{ inputs.head }}
+        extra_args: --debug --only-verified

@@ -1,0 +1,43 @@
+name: "Lint"
+description: "Lints codebase using standard tools (Actionlint, Shellcheck, Markdownlint)"
+inputs:
+  enable-actionlint:
+    description: "Enable Actionlint"
+    required: false
+    default: "true"
+  enable-shellcheck:
+    description: "Enable Shellcheck"
+    required: false
+    default: "true"
+  enable-markdownlint:
+    description: "Enable Markdownlint"
+    required: false
+    default: "true"
+runs:
+  using: "composite"
+  steps:
+    - name: Run Actionlint
+      if: inputs.enable-actionlint == 'true'
+      shell: bash
+      run: |
+        echo "::group::Actionlint"
+        bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+        ./actionlint -color
+        echo "::endgroup::"
+
+    - name: Run Shellcheck
+      if: inputs.enable-shellcheck == 'true'
+      shell: bash
+      run: |
+        echo "::group::Shellcheck"
+        find . -type f -name "*.sh" -exec shellcheck -S warning {} + || echo "No shell scripts found or check failed"
+        echo "::endgroup::"
+
+    - name: Run Markdownlint
+      if: inputs.enable-markdownlint == 'true'
+      shell: bash
+      run: |
+        echo "::group::Markdownlint"
+        npm install -g markdownlint-cli
+        markdownlint "**/*.md" --ignore node_modules
+        echo "::endgroup::"

@@ -1,0 +1,24 @@
+name: "Enforce Clean Branch"
+description: "Rejects PRs containing forbidden artifacts (e.g., .ai-work)"
+
+on:
+  workflow_call:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Check for .ai-work
+        shell: bash
+        run: |
+          if [ -d ".ai-work" ]; then
+            echo "::error::❌ .ai-work directory found! You must archive artifacts before merging."
+            echo "Run the 'Archive AI Artifacts' workflow to archive and remove this directory."
+            exit 1
+          fi
+          echo "✅ No .ai-work directory found."

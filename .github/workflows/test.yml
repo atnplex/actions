@@ -1,0 +1,53 @@
+name: "Reusable Test"
+description: "Generic test runner for Node.js projects"
+
+on:
+  workflow_call:
+    inputs:
+      test-type:
+        required: true
+        type: string
+        description: "Test type (unit, integration, e2e)"
+      test-command:
+        required: false
+        type: string
+        default: "npm test"
+      runner:
+        required: false
+        type: string
+        default: "ubuntu-latest"
+
+jobs:
+  test:
+    runs-on: ${{ inputs.runner == 'ubuntu-latest' && 'ubuntu-latest' || fromJSON(inputs.runner) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          elif [ -f package.json ]; then
+            npm install
+          fi
+
+      - name: Run ${{ inputs.test-type }} tests
+        run: ${{ inputs.test-command }}
+        env:
+          NODE_ENV: test
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ inputs.test-type }}
+          path: |
+            coverage/
+            test-results/
+          retention-days: 30
