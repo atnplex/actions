@@ -20,33 +20,33 @@ on:
 jobs:
   enforce-clean:
     if: inputs.allow-ai-artifacts == false
-    uses: atnplex/actions/.github/workflows/enforce-clean.yml@chore/init-ssot-actions
+    uses: atnplex/actions/.github/workflows/enforce-clean.yml@v1
 
   lint:
     if: inputs.enable-lint
-    uses: atnplex/actions/.github/workflows/lint.yml@chore/init-ssot-actions
+    uses: atnplex/actions/.github/workflows/lint.yml@v1
     permissions:
       contents: read
 
   format:
     if: inputs.enable-lint
-    uses: atnplex/actions/.github/workflows/format.yml@chore/init-ssot-actions
+    uses: atnplex/actions/.github/workflows/format.yml@v1
     permissions:
       contents: write
 
   metadata:
-    uses: atnplex/actions/.github/workflows/metadata.yml@chore/init-ssot-actions
+    uses: atnplex/actions/.github/workflows/metadata.yml@v1
     permissions:
       pull-requests: read
       statuses: write
 
   security-scan:
     if: inputs.enable-security
-    uses: atnplex/actions/.github/workflows/secret-scan.yml@chore/init-ssot-actions
+    uses: atnplex/actions/.github/workflows/secret-scan.yml@v1
 
   codeql:
     if: inputs.enable-security
-    uses: atnplex/actions/.github/workflows/codeql.yml@chore/init-ssot-actions
+    uses: atnplex/actions/.github/workflows/codeql.yml@v1
     with:
       language: ${{ inputs.language }}
     permissions:
