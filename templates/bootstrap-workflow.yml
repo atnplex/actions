@@ -9,7 +9,7 @@ jobs:
   governance:
     # Pointing to the feature branch for initial testing. 
     # Will be updated to @v1 after the actions repo is merged and tagged.
-    uses: atnplex/actions/.github/workflows/repo-bootstrap.yml@chore/init-ssot-actions
+    uses: atnplex/actions/.github/workflows/repo-bootstrap.yml@v1
     secrets: inherit
     with:
       enable-lint: true
